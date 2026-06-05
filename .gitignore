@@ -1,0 +1,38 @@
+.gemini/
+.antigravity/
+.antigravity-ide/
+Antigravity
+
+# Antigravity app - ignore entire folder
+.antigravity-ide/
+Antigravity
+
+# IntelliJ / VS Code
+.idea/
+.vscode/
+
+# Spring Boot build output
+Spring boot/target/
+Spring boot/*.jar
+Spring boot/*.war
+
+# React / Node
+Frontend/node_modules/
+Frontend/build/
+Frontend/dist/
+
+# Database folder
+Database/
+
+# Installers & executables
+*.exe
+*.msi
+*.zip
+*.pksz
+
+# Postman
+Postman repository/
+
+# Secrets
+.env
+*.properties

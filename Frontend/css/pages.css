@@ -1,0 +1,65 @@
+/* ================================================================
+   PAGE-SPECIFIC STYLES — Budget, Scanner, Insights, Split
+   ================================================================ */
+
+/* BUDGET */
+.budget-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:1rem;margin-top:1rem}
+.budget-card{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:1.4rem;animation:fadeUp 0.4s ease backwards;transition:background 0.3s}
+.budget-cat{display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem}
+.budget-amounts{display:flex;justify-content:space-between;font-size:0.78rem;color:var(--muted);margin-bottom:0.6rem}
+.budget-spent{color:var(--text);font-weight:500}
+.progress-bar{height:6px;background:var(--surface2);border-radius:10px;overflow:hidden}
+.progress-fill{height:100%;border-radius:10px;transition:width 0.8s ease}
+.progress-fill.safe{background:var(--green)}
+.progress-fill.warning{background:var(--yellow)}
+.progress-fill.danger{background:var(--red)}
+
+/* RECEIPT SCANNER */
+.scanner-layout{display:grid;grid-template-columns:1fr 1fr;gap:1.5rem}
+.scanner-upload-zone{background:var(--surface);border:2px dashed var(--border);border-radius:16px;padding:3rem 2rem;text-align:center;cursor:pointer;transition:all 0.3s;position:relative}
+.scanner-upload-zone:hover,.scanner-upload-zone.dragover{border-color:var(--accent);background:rgba(124,106,247,0.05)}
+.scanner-upload-zone input[type=file]{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%}
+.upload-icon{font-size:3rem;margin-bottom:1rem;opacity:0.6}
+.upload-title{font-family:'Syne',sans-serif;font-size:1rem;font-weight:600;margin-bottom:0.4rem}
+.upload-sub{font-size:0.78rem;color:var(--muted)}
+.receipt-preview{width:100%;border-radius:12px;object-fit:cover;max-height:300px;display:none;margin-top:1rem}
+.scanner-result{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:1.5rem}
+.scanner-result-title{font-family:'Syne',sans-serif;font-size:0.95rem;font-weight:600;margin-bottom:1.2rem;display:flex;align-items:center;gap:0.5rem}
+.scan-status{display:flex;align-items:center;gap:0.8rem;padding:1rem;background:var(--surface2);border-radius:10px;margin-bottom:1.2rem;font-size:0.82rem}
+.scan-status.scanning{border-left:3px solid var(--accent)}
+.scan-status.success{border-left:3px solid var(--green)}
+.scan-status.error{border-left:3px solid var(--red)}
+.scan-status.idle{border-left:3px solid var(--border)}
+.extracted-field{background:var(--surface2);border-radius:10px;padding:0.8rem 1rem;margin-bottom:0.8rem;border:1px solid var(--border)}
+.extracted-label{font-size:0.65rem;color:var(--muted);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:0.3rem}
+.extracted-value{font-family:'Syne',sans-serif;font-size:1rem;font-weight:600;color:var(--text)}
+.extracted-value.accent{color:var(--accent)}
+.extracted-value.green{color:var(--green)}
+.api-key-section{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:1.5rem;margin-bottom:1.5rem}
+.api-key-title{font-family:'Syne',sans-serif;font-size:0.95rem;font-weight:600;margin-bottom:0.4rem}
+.api-key-sub{font-size:0.78rem;color:var(--muted);margin-bottom:1rem;line-height:1.5}
+.api-key-row{display:flex;gap:0.8rem}
+.api-key-row input{flex:1}
+
+/* AI INSIGHTS */
+.insight-card{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:1.5rem;margin-bottom:1rem;animation:fadeUp 0.4s ease backwards}
+.insight-header{display:flex;align-items:center;gap:0.8rem;margin-bottom:0.8rem}
+.insight-icon{font-size:1.4rem}
+.insight-title{font-family:'Syne',sans-serif;font-size:0.95rem;font-weight:600}
+.insight-text{font-size:0.85rem;color:var(--muted);line-height:1.6}
+.insight-highlight{color:var(--accent);font-weight:500}
+
+/* SPLIT BILL */
+.split-card{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:1.4rem;margin-bottom:1rem;animation:fadeUp 0.4s ease}
+.split-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem}
+.split-title-text{font-family:'Syne',sans-serif;font-size:0.95rem;font-weight:600}
+.split-total{font-family:'Syne',sans-serif;font-size:1.2rem;font-weight:700;color:var(--accent2)}
+.split-member{display:flex;align-items:center;justify-content:space-between;padding:0.6rem 0;border-bottom:1px solid var(--border)}
+.split-member:last-child{border-bottom:none}
+.member-name{font-size:0.85rem}
+.member-amount{font-family:'Syne',sans-serif;font-weight:600;font-size:0.9rem}
+.member-amount.owes{color:var(--red)}
+.member-amount.paid{color:var(--green)}
+.member-tag{font-size:0.65rem;padding:0.2rem 0.5rem;border-radius:10px;margin-left:0.4rem}
+.tag-paid{background:rgba(74,222,128,0.15);color:var(--green)}
+.tag-owes{background:rgba(248,113,113,0.15);color:var(--red)}

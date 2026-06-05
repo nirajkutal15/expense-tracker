@@ -1,0 +1,390 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>ExpenseIQ — Smart Expense Tracker</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&display=swap" rel="stylesheet"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+
+<!-- Stylesheets -->
+<link rel="stylesheet" href="css/variables.css"/>
+<link rel="stylesheet" href="css/layout.css"/>
+<link rel="stylesheet" href="css/components.css"/>
+<link rel="stylesheet" href="css/pages.css"/>
+<link rel="stylesheet" href="css/animations.css"/>
+</head>
+<body>
+
+<!-- ═══════════ AUTH ═══════════ -->
+<div id="screen-auth" class="active">
+  <div class="auth-card">
+    <div class="auth-logo">Expense<span>IQ</span></div>
+    <div class="auth-sub">Track smarter. Spend better.</div>
+    <div class="tab-row">
+      <button class="tab-btn active" onclick="switchTab('login')">Sign In</button>
+      <button class="tab-btn" onclick="switchTab('register')">Register</button>
+    </div>
+    <div id="form-login">
+      <div class="form-group"><label>Username</label><input type="text" id="login-username" placeholder="your_username"/></div>
+      <div class="form-group"><label>Password</label><input type="password" id="login-password" placeholder="••••••••"/></div>
+      <div class="form-error" id="login-error"></div>
+      <br/>
+      <button class="btn btn-primary" onclick="handleLogin()">Sign In</button>
+    </div>
+    <div id="form-register" style="display:none">
+      <div class="form-row">
+        <div class="form-group"><label>Username</label><input type="text" id="reg-username" placeholder="john_doe"/></div>
+        <div class="form-group"><label>Email</label><input type="email" id="reg-email" placeholder="john@email.com"/></div>
+      </div>
+      <div class="form-group"><label>Password</label><input type="password" id="reg-password" placeholder="min 6 characters"/></div>
+      <div class="form-group"><label>City</label><input type="text" id="reg-location" placeholder="Mumbai"/></div>
+      <div class="form-error" id="reg-error"></div>
+      <br/>
+      <button class="btn btn-primary" onclick="handleRegister()">Create Account</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════ APP ═══════════ -->
+<div id="screen-app">
+  <div class="app-layout">
+    <aside class="sidebar">
+      <div class="sidebar-logo">Expense<span>IQ</span></div>
+      <nav class="sidebar-nav">
+        <div class="nav-label">Menu</div>
+        <div class="nav-item active" onclick="showPage('dashboard')" data-page="dashboard"><span class="nav-icon">◈</span>Dashboard</div>
+        <div class="nav-item" onclick="showPage('expenses')" data-page="expenses"><span class="nav-icon">◎</span>Expenses</div>
+        <div class="nav-item" onclick="showPage('analytics')" data-page="analytics"><span class="nav-icon">▲</span>Analytics</div>
+        <div class="nav-item" onclick="showPage('budget')" data-page="budget"><span class="nav-icon">◇</span>Budget</div>
+        <div class="nav-item" onclick="showPage('scanner')" data-page="scanner"><span class="nav-icon">📷</span>Receipt Scanner</div>
+        <div class="nav-item" onclick="showPage('insights')" data-page="insights"><span class="nav-icon">✦</span>AI Insights</div>
+        <div class="nav-item" onclick="showPage('split')" data-page="split"><span class="nav-icon">⊕</span>Split Bill</div>
+        <div class="nav-label">Settings</div>
+        <div class="nav-item" onclick="toggleTheme()" id="theme-toggle"><span class="nav-icon">☀️</span>Light Mode</div>
+      </nav>
+      <div class="sidebar-user">
+        <div><div class="user-name" id="sidebar-username">—</div><div class="user-tag">Free Account</div></div>
+        <button class="btn btn-ghost btn-sm" onclick="handleLogout()">Out</button>
+      </div>
+    </aside>
+
+    <main class="main-content">
+
+      <!-- DASHBOARD -->
+      <div class="page active" id="page-dashboard">
+        <div class="page-header">
+          <div><div class="page-title">Dashboard</div><div class="page-subtitle" id="dashboard-date">—</div></div>
+          <button class="btn btn-primary btn-sm" onclick="openPanel('overlay-expense')">+ Add Expense</button>
+        </div>
+        <div class="month-selector">
+          <select id="dash-month" onchange="loadDashboard()">
+            <option value="1">January</option><option value="2">February</option><option value="3">March</option>
+            <option value="4">April</option><option value="5">May</option><option value="6">June</option>
+            <option value="7">July</option><option value="8">August</option><option value="9">September</option>
+            <option value="10">October</option><option value="11">November</option><option value="12">December</option>
+          </select>
+          <select id="dash-year" onchange="loadDashboard()">
+            <option value="2024">2024</option><option value="2025">2025</option><option value="2026">2026</option>
+          </select>
+        </div>
+        <div class="stats-grid">
+          <div class="stat-card"><div class="stat-icon">💸</div><div class="stat-label">Total Spent</div><div class="stat-value red" id="stat-total">₹0</div></div>
+          <div class="stat-card"><div class="stat-icon">📊</div><div class="stat-label">Transactions</div><div class="stat-value accent" id="stat-count">0</div></div>
+          <div class="stat-card"><div class="stat-icon">📈</div><div class="stat-label">Avg Per Day</div><div class="stat-value yellow" id="stat-avg">₹0</div></div>
+          <div class="stat-card"><div class="stat-icon">🏆</div><div class="stat-label">Top Category</div><div class="stat-value green" id="stat-top" style="font-size:1.1rem">—</div></div>
+        </div>
+        <div class="charts-grid">
+          <div class="chart-card"><div class="chart-title">Spending by Category</div><div class="chart-wrapper"><canvas id="pie-chart"></canvas></div></div>
+          <div class="chart-card"><div class="chart-title">Daily Spending</div><div class="chart-wrapper"><canvas id="bar-chart"></canvas></div></div>
+        </div>
+        <div class="table-card">
+          <div class="table-header"><div class="table-title">Recent Expenses</div></div>
+          <table><thead><tr><th>Description</th><th>Category</th><th>Date</th><th>Amount</th></tr></thead>
+          <tbody id="recent-expenses-body"></tbody></table>
+        </div>
+      </div>
+
+      <!-- EXPENSES -->
+      <div class="page" id="page-expenses">
+        <div class="page-header">
+          <div><div class="page-title">All Expenses</div><div class="page-subtitle" id="expense-count-label">—</div></div>
+          <div class="header-actions">
+            <button class="btn btn-ghost btn-sm" onclick="exportCSV()">⬇ Export CSV</button>
+            <button class="btn btn-primary btn-sm" onclick="openPanel('overlay-expense')">+ Add Expense</button>
+          </div>
+        </div>
+        <div class="filter-bar">
+          <select id="filter-category" onchange="applyFilters()">
+            <option value="">All Categories</option>
+            <option>Food</option><option>Transport</option><option>Shopping</option>
+            <option>Entertainment</option><option>Bills</option><option>Education</option><option>Other</option>
+          </select>
+          <input type="date" id="filter-from" onchange="applyFilters()"/>
+          <input type="date" id="filter-to" onchange="applyFilters()"/>
+          <button class="btn btn-ghost btn-sm" onclick="clearFilters()">Clear</button>
+        </div>
+        <div class="table-card">
+          <table><thead><tr><th>Description</th><th>Category</th><th>Date</th><th>Amount</th><th>Action</th></tr></thead>
+          <tbody id="all-expenses-body"></tbody></table>
+        </div>
+      </div>
+
+      <!-- ANALYTICS -->
+      <div class="page" id="page-analytics">
+        <div class="page-header"><div><div class="page-title">Analytics</div><div class="page-subtitle">Deep dive into spending patterns</div></div></div>
+        <div class="month-selector">
+          <select id="analytics-month" onchange="loadAnalytics()">
+            <option value="1">January</option><option value="2">February</option><option value="3">March</option>
+            <option value="4">April</option><option value="5">May</option><option value="6">June</option>
+            <option value="7">July</option><option value="8">August</option><option value="9">September</option>
+            <option value="10">October</option><option value="11">November</option><option value="12">December</option>
+          </select>
+          <select id="analytics-year" onchange="loadAnalytics()">
+            <option value="2024">2024</option><option value="2025">2025</option><option value="2026">2026</option>
+          </select>
+        </div>
+        <div class="charts-grid">
+          <div class="chart-card" style="grid-column:span 2"><div class="chart-title">Daily Spending Trend</div><div class="chart-wrapper" style="height:260px"><canvas id="analytics-bar-chart"></canvas></div></div>
+          <div class="chart-card"><div class="chart-title">Category Distribution</div><div class="chart-wrapper"><canvas id="analytics-pie-chart"></canvas></div></div>
+          <div class="chart-card"><div class="chart-title">Category Breakdown</div><div id="analytics-breakdown" style="padding-top:0.5rem"></div></div>
+        </div>
+      </div>
+
+      <!-- BUDGET -->
+      <div class="page" id="page-budget">
+        <div class="page-header">
+          <div><div class="page-title">Budget Tracker</div><div class="page-subtitle">Set and track monthly limits</div></div>
+          <button class="btn btn-primary btn-sm" onclick="openPanel('overlay-budget')">+ Set Budget</button>
+        </div>
+        <div class="month-selector">
+          <select id="budget-month" onchange="loadBudget()">
+            <option value="1">January</option><option value="2">February</option><option value="3">March</option>
+            <option value="4">April</option><option value="5">May</option><option value="6">June</option>
+            <option value="7">July</option><option value="8">August</option><option value="9">September</option>
+            <option value="10">October</option><option value="11">November</option><option value="12">December</option>
+          </select>
+          <select id="budget-year" onchange="loadBudget()">
+            <option value="2024">2024</option><option value="2025">2025</option><option value="2026" selected>2026</option>
+          </select>
+        </div>
+        <div class="budget-grid" id="budget-grid"></div>
+      </div>
+
+      <!-- ═══ RECEIPT SCANNER PAGE ═══ -->
+      <div class="page" id="page-scanner">
+        <div class="page-header">
+          <div>
+            <div class="page-title">Receipt Scanner</div>
+            <div class="page-subtitle">Upload a receipt photo — AI extracts the details automatically</div>
+          </div>
+        </div>
+
+        <!-- API Key Section -->
+        <div class="scanner-layout">
+          <!-- Upload Zone -->
+          <div>
+            <div class="scanner-upload-zone" id="upload-zone" ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)" ondrop="handleDrop(event)">
+              <input type="file" id="receipt-file" accept="image/*" onchange="handleFileSelect(event)"/>
+              <div class="upload-icon">📷</div>
+              <div class="upload-title">Drop receipt here</div>
+              <div class="upload-sub">or click to browse · JPG, PNG, WEBP supported</div>
+              <img id="receipt-preview" class="receipt-preview" alt="Receipt preview"/>
+            </div>
+            <br/>
+            <button class="btn btn-primary" id="scan-btn" onclick="scanReceipt()" style="display:none">
+              ✦ Scan with AI
+            </button>
+          </div>
+
+          <!-- Result Zone -->
+          <div class="scanner-result">
+            <div class="scanner-result-title">
+              <span>✦</span> Extracted Details
+            </div>
+
+            <div class="scan-status idle" id="scan-status">
+              <span>Upload a receipt image to get started</span>
+            </div>
+
+            <div id="extracted-data" style="display:none">
+              <div class="extracted-field">
+                <div class="extracted-label">Amount</div>
+                <div class="extracted-value accent" id="ext-amount">—</div>
+              </div>
+              <div class="extracted-field">
+                <div class="extracted-label">Category</div>
+                <div class="extracted-value" id="ext-category">—</div>
+              </div>
+              <div class="extracted-field">
+                <div class="extracted-label">Description / Merchant</div>
+                <div class="extracted-value" id="ext-description">—</div>
+              </div>
+              <div class="extracted-field">
+                <div class="extracted-label">Date</div>
+                <div class="extracted-value green" id="ext-date">—</div>
+              </div>
+              <div class="extracted-field" id="ext-items-section" style="display:none">
+                <div class="extracted-label">Items Detected</div>
+                <div class="extracted-value" id="ext-items" style="font-size:0.82rem;font-weight:400;line-height:1.6;color:var(--muted)">—</div>
+              </div>
+              <br/>
+              <button class="btn btn-success" onclick="addScannedExpense()">
+                ✓ Add to Expenses
+              </button>
+            </div>
+
+            <!-- Raw AI response for transparency -->
+            <div id="ai-raw" style="display:none;margin-top:1rem">
+              <div style="font-size:0.7rem;color:var(--muted);margin-bottom:0.4rem;text-transform:uppercase;letter-spacing:0.08em">AI Raw Response</div>
+              <div id="ai-raw-text" style="font-size:0.75rem;color:var(--muted);background:var(--surface2);padding:0.8rem;border-radius:8px;line-height:1.6;max-height:150px;overflow-y:auto"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- How It Works -->
+        <div style="margin-top:2rem;background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:1.5rem">
+          <div style="font-family:'Syne',sans-serif;font-size:0.95rem;font-weight:600;margin-bottom:1rem">How Receipt Scanner Works</div>
+          <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:1rem">
+            <div style="text-align:center;padding:1rem">
+              <div style="font-size:2rem;margin-bottom:0.5rem">📷</div>
+              <div style="font-size:0.78rem;font-weight:600;margin-bottom:0.3rem">1. Upload</div>
+              <div style="font-size:0.72rem;color:var(--muted)">Take a photo or upload an image of your receipt</div>
+            </div>
+            <div style="text-align:center;padding:1rem">
+              <div style="font-size:2rem;margin-bottom:0.5rem">🤖</div>
+              <div style="font-size:0.78rem;font-weight:600;margin-bottom:0.3rem">2. AI Reads</div>
+              <div style="font-size:0.72rem;color:var(--muted)">Claude Vision API reads and understands the receipt</div>
+            </div>
+            <div style="text-align:center;padding:1rem">
+              <div style="font-size:2rem;margin-bottom:0.5rem">✨</div>
+              <div style="font-size:0.78rem;font-weight:600;margin-bottom:0.3rem">3. Extract</div>
+              <div style="font-size:0.72rem;color:var(--muted)">Amount, category, merchant and date are extracted</div>
+            </div>
+            <div style="text-align:center;padding:1rem">
+              <div style="font-size:2rem;margin-bottom:0.5rem">✓</div>
+              <div style="font-size:0.78rem;font-weight:600;margin-bottom:0.3rem">4. Save</div>
+              <div style="font-size:0.72rem;color:var(--muted)">One click to add the expense to your tracker</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- AI INSIGHTS -->
+      <div class="page" id="page-insights">
+        <div class="page-header">
+          <div><div class="page-title">AI Insights</div><div class="page-subtitle">Smart analysis of your spending patterns</div></div>
+          <button class="btn btn-primary btn-sm" onclick="loadInsights()">✦ Generate</button>
+        </div>
+        <div class="month-selector">
+          <select id="insights-month" onchange="loadInsights()">
+            <option value="1">January</option><option value="2">February</option><option value="3">March</option>
+            <option value="4">April</option><option value="5">May</option><option value="6">June</option>
+            <option value="7">July</option><option value="8">August</option><option value="9">September</option>
+            <option value="10">October</option><option value="11">November</option><option value="12">December</option>
+          </select>
+          <select id="insights-year" onchange="loadInsights()">
+            <option value="2024">2024</option><option value="2025">2025</option><option value="2026">2026</option>
+          </select>
+        </div>
+        <div id="insights-container"></div>
+      </div>
+
+      <!-- SPLIT BILL -->
+      <div class="page" id="page-split">
+        <div class="page-header">
+          <div><div class="page-title">Split Bill</div><div class="page-subtitle">Split expenses with friends</div></div>
+          <button class="btn btn-primary btn-sm" onclick="openPanel('overlay-split')">+ New Split</button>
+        </div>
+        <div id="split-list"></div>
+      </div>
+
+    </main>
+  </div>
+</div>
+
+<!-- ═══════════ PANELS ═══════════ -->
+<div class="overlay" id="overlay-expense">
+  <div class="panel">
+    <div class="panel-header"><div class="panel-title">Add Expense</div><button class="panel-close" onclick="closePanel('overlay-expense')">×</button></div>
+    <div class="form-row">
+      <div class="form-group"><label>Amount (₹)</label><input type="number" id="exp-amount" placeholder="0.00"/></div>
+      <div class="form-group"><label>Category</label>
+        <select id="exp-category">
+          <option value="">Select</option>
+          <option>Food</option><option>Transport</option><option>Shopping</option>
+          <option>Entertainment</option><option>Bills</option><option>Education</option><option>Other</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-group"><label>Description</label><input type="text" id="exp-description" placeholder="What did you spend on?"/></div>
+    <div class="form-group"><label>Date</label><input type="date" id="exp-date"/></div>
+    <br/>
+    <button class="btn btn-primary" onclick="submitExpense()">Save Expense</button>
+  </div>
+</div>
+
+<div class="overlay" id="overlay-budget">
+  <div class="panel">
+    <div class="panel-header"><div class="panel-title">Set Budget</div><button class="panel-close" onclick="closePanel('overlay-budget')">×</button></div>
+    <div class="form-group"><label>Category</label>
+      <select id="bud-category">
+        <option value="">Select</option>
+        <option>Food</option><option>Transport</option><option>Shopping</option>
+        <option>Entertainment</option><option>Bills</option><option>Education</option><option>Other</option>
+      </select>
+    </div>
+    <div class="form-group"><label>Monthly Limit (₹)</label><input type="number" id="bud-limit" placeholder="5000"/></div>
+    <div class="form-row">
+      <div class="form-group"><label>Month</label>
+        <select id="bud-month">
+          <option value="1">January</option><option value="2">February</option><option value="3" selected>March</option>
+          <option value="4">April</option><option value="5">May</option><option value="6">June</option>
+          <option value="7">July</option><option value="8">August</option><option value="9">September</option>
+          <option value="10">October</option><option value="11">November</option><option value="12">December</option>
+        </select>
+      </div>
+      <div class="form-group"><label>Year</label>
+        <select id="bud-year">
+          <option value="2024">2024</option><option value="2025">2025</option><option value="2026" selected>2026</option>
+        </select>
+      </div>
+    </div>
+    <br/>
+    <button class="btn btn-primary" onclick="submitBudget()">Save Budget</button>
+  </div>
+</div>
+
+<div class="overlay" id="overlay-split">
+  <div class="panel">
+    <div class="panel-header"><div class="panel-title">Split Bill</div><button class="panel-close" onclick="closePanel('overlay-split')">×</button></div>
+    <div class="form-group"><label>Bill Title</label><input type="text" id="split-title" placeholder="Dinner at restaurant"/></div>
+    <div class="form-group"><label>Total Amount (₹)</label><input type="number" id="split-amount" placeholder="1200"/></div>
+    <div class="form-group"><label>Your Name</label><input type="text" id="split-your-name" placeholder="Your name"/></div>
+    <div class="form-group"><label>Friends (comma separated)</label><input type="text" id="split-friends" placeholder="Rahul, Priya, Amit"/></div>
+    <div class="form-group"><label>Who Paid?</label><input type="text" id="split-paid-by" placeholder="Name of person who paid"/></div>
+    <br/>
+    <button class="btn btn-primary" onclick="calculateSplit()">Calculate Split</button>
+  </div>
+</div>
+
+<div id="toast-container"></div>
+
+<!-- JavaScript Modules (load order matters) -->
+<script src="js/config.js"></script>
+<script src="js/utils.js"></script>
+<script src="js/api.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/charts.js"></script>
+<script src="js/dashboard.js"></script>
+<script src="js/expenses.js"></script>
+<script src="js/analytics.js"></script>
+<script src="js/budget.js"></script>
+<script src="js/scanner.js"></script>
+<script src="js/insights.js"></script>
+<script src="js/split.js"></script>
+<script src="js/theme.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
