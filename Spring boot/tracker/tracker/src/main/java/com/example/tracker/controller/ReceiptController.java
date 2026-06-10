@@ -3,6 +3,8 @@ package com.example.tracker.controller;
 import com.example.tracker.dto.ExpenseRequest;
 import com.example.tracker.repository.UserRepository;
 import com.example.tracker.service.ExpenseService;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.*;
@@ -25,6 +27,7 @@ public class ReceiptController {
 
     private final ExpenseService expenseService;
     private final UserRepository userRepository;
+    private final ObjectMapper objectMapper = new ObjectMapper();
 
     private Long getUserId(Authentication auth) {
         return userRepository.findByUsername(auth.getName())
@@ -38,13 +41,19 @@ public class ReceiptController {
         String mediaType = body.getOrDefault("mediaType", "image/jpeg");
 
         if (base64Image == null || base64Image.isEmpty()) {
-            return ResponseEntity.badRequest().body("No image provided");
+            return ResponseEntity.badRequest().body(Map.of("error", "No image provided"));
+        }
+
+        if (geminiApiKey == null || geminiApiKey.isBlank()) {
+            System.err.println("[ReceiptController] GEMINI_API_KEY is empty! Set it in .env file.");
+            return ResponseEntity.status(500)
+                    .body(Map.of("error", "Gemini API key is not configured. Set GEMINI_API_KEY in your .env file."));
         }
 
         try {
             RestTemplate restTemplate = new RestTemplate();
 
-            String url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=" + geminiApiKey;
+            String url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=" + geminiApiKey;
 
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_JSON);
@@ -75,24 +84,103 @@ public class ReceiptController {
 
             HttpEntity<Map<String, Object>> request = new HttpEntity<>(requestBody, headers);
 
-            ResponseEntity<Map> response = restTemplate.postForEntity(url, request, Map.class);
+            System.out.println("[ReceiptController] Sending image to Gemini API...");
+            ResponseEntity<String> response = restTemplate.postForEntity(url, request, String.class);
 
-            Map<?, ?> responseBody = response.getBody();
+            String responseStr = response.getBody();
+            System.out.println("[ReceiptController] Gemini raw response: " + (responseStr != null ? responseStr.substring(0, Math.min(responseStr.length(), 500)) : "null"));
+
+            if (responseStr == null || responseStr.isBlank()) {
+                return ResponseEntity.status(500).body(Map.of("error", "Gemini returned empty response"));
+            }
+
+            // Parse the Gemini response JSON safely
+            Map<String, Object> responseBody = objectMapper.readValue(responseStr, new TypeReference<>() {});
+
+            // Check for API-level errors
+            if (responseBody.containsKey("error")) {
+                Map<?, ?> errorObj = (Map<?, ?>) responseBody.get("error");
+                String errorMsg = errorObj != null ? String.valueOf(errorObj.get("message")) : "Unknown Gemini API error";
+                System.err.println("[ReceiptController] Gemini API error: " + errorMsg);
+                return ResponseEntity.status(500).body(Map.of("error", "Gemini API error: " + errorMsg));
+            }
+
+            // Navigate: candidates[0].content.parts[0].text
             List<?> candidates = (List<?>) responseBody.get("candidates");
+            if (candidates == null || candidates.isEmpty()) {
+                // Check if content was blocked
+                Object promptFeedback = responseBody.get("promptFeedback");
+                String detail = promptFeedback != null ? promptFeedback.toString() : "No candidates returned";
+                System.err.println("[ReceiptController] No candidates: " + detail);
+                return ResponseEntity.status(500).body(Map.of("error", "AI could not read the receipt. " + detail));
+            }
+
             Map<?, ?> firstCandidate = (Map<?, ?>) candidates.get(0);
+            if (firstCandidate == null) {
+                return ResponseEntity.status(500).body(Map.of("error", "Empty candidate in AI response"));
+            }
+
+            // Check if candidate was blocked
+            Object finishReason = firstCandidate.get("finishReason");
+            if ("SAFETY".equals(finishReason) || "BLOCKED".equals(finishReason)) {
+                return ResponseEntity.status(500).body(Map.of("error", "AI blocked the content for safety reasons. Try a clearer receipt image."));
+            }
+
             Map<?, ?> contentMap = (Map<?, ?>) firstCandidate.get("content");
+            if (contentMap == null) {
+                return ResponseEntity.status(500).body(Map.of("error", "No content in AI response"));
+            }
+
             List<?> parts = (List<?>) contentMap.get("parts");
+            if (parts == null || parts.isEmpty()) {
+                return ResponseEntity.status(500).body(Map.of("error", "No parts in AI response"));
+            }
+
             Map<?, ?> firstPart = (Map<?, ?>) parts.get(0);
             String rawText = (String) firstPart.get("text");
 
-            String cleanJson = rawText.replace("```json", "").replace("```", "").trim();
+            if (rawText == null || rawText.isBlank()) {
+                return ResponseEntity.status(500).body(Map.of("error", "AI returned empty text"));
+            }
+
+            System.out.println("[ReceiptController] Raw AI text: " + rawText);
+
+            // Clean markdown fences — Gemini often wraps JSON in ```json ... ```
+            String cleanJson = rawText.trim();
+            if (cleanJson.startsWith("```")) {
+                // Remove opening fence (```json or ```)
+                int firstNewline = cleanJson.indexOf('\n');
+                if (firstNewline != -1) {
+                    cleanJson = cleanJson.substring(firstNewline + 1);
+                }
+                // Remove closing fence
+                int lastFence = cleanJson.lastIndexOf("```");
+                if (lastFence != -1) {
+                    cleanJson = cleanJson.substring(0, lastFence);
+                }
+                cleanJson = cleanJson.trim();
+            }
+
+            // Validate it's actually valid JSON by parsing it
+            try {
+                objectMapper.readValue(cleanJson, new TypeReference<Map<String, Object>>() {});
+            } catch (Exception parseErr) {
+                System.err.println("[ReceiptController] Failed to parse cleaned JSON: " + cleanJson);
+                return ResponseEntity.status(500).body(Map.of(
+                        "error", "AI response was not valid JSON",
+                        "rawText", rawText
+                ));
+            }
 
             Map<String, String> result = new HashMap<>();
             result.put("result", cleanJson);
+            System.out.println("[ReceiptController] Scan successful, returning: " + cleanJson);
             return ResponseEntity.ok(result);
 
         } catch (Exception e) {
-            return ResponseEntity.status(500).body("Scan failed: " + e.getMessage());
+            System.err.println("[ReceiptController] Scan exception: " + e.getMessage());
+            e.printStackTrace();
+            return ResponseEntity.status(500).body(Map.of("error", "Scan failed: " + e.getMessage()));
         }
     }
 
@@ -109,16 +197,29 @@ public class ReceiptController {
             Map<String, String> resultMap = (Map<String, String>) scanResult.getBody();
             String jsonStr = resultMap.get("result");
 
-            double amount = extractDouble(jsonStr, "amount");
-            String category = extractString(jsonStr, "category");
-            String description = extractString(jsonStr, "description");
-            String date = extractString(jsonStr, "date");
+            Map<String, Object> parsed = objectMapper.readValue(jsonStr, new TypeReference<>() {});
+
+            double amount = 0.0;
+            Object amountObj = parsed.get("amount");
+            if (amountObj instanceof Number) {
+                amount = ((Number) amountObj).doubleValue();
+            } else if (amountObj instanceof String) {
+                amount = Double.parseDouble(((String) amountObj).replaceAll("[^0-9.]", ""));
+            }
+
+            String category = String.valueOf(parsed.getOrDefault("category", "Other"));
+            String description = String.valueOf(parsed.getOrDefault("description", "Receipt scan"));
+            String date = String.valueOf(parsed.getOrDefault("date", LocalDate.now().toString()));
 
             ExpenseRequest expenseRequest = new ExpenseRequest();
             expenseRequest.setAmount(amount);
             expenseRequest.setCategory(category.isEmpty() ? "Other" : category);
             expenseRequest.setDescription(description.isEmpty() ? "Receipt scan" : description);
-            expenseRequest.setDate(date.isEmpty() ? LocalDate.now() : LocalDate.parse(date));
+            try {
+                expenseRequest.setDate(LocalDate.parse(date));
+            } catch (Exception e) {
+                expenseRequest.setDate(LocalDate.now());
+            }
 
             Long userId = getUserId(auth);
             expenseService.addExpense(userId, expenseRequest);
@@ -132,38 +233,8 @@ public class ReceiptController {
             return ResponseEntity.ok(resp);
 
         } catch (Exception e) {
-            return ResponseEntity.status(500).body("Failed to save: " + e.getMessage());
-        }
-    }
-
-    private String extractString(String json, String key) {
-        try {
-            int idx = json.indexOf("\"" + key + "\"");
-            if (idx == -1) return "";
-            int colon = json.indexOf(":", idx);
-            int start = json.indexOf("\"", colon + 1);
-            int end = json.indexOf("\"", start + 1);
-            return json.substring(start + 1, end);
-        } catch (Exception e) {
-            return "";
-        }
-    }
-
-    private double extractDouble(String json, String key) {
-        try {
-            int idx = json.indexOf("\"" + key + "\"");
-            if (idx == -1) return 0.0;
-            int colon = json.indexOf(":", idx);
-            int start = colon + 1;
-            while (start < json.length() && json.charAt(start) == ' ') start++;
-            int end = start;
-            while (end < json.length() &&
-                    (Character.isDigit(json.charAt(end)) || json.charAt(end) == '.')) {
-                end++;
-            }
-            return Double.parseDouble(json.substring(start, end));
-        } catch (Exception e) {
-            return 0.0;
+            System.err.println("[ReceiptController] Save exception: " + e.getMessage());
+            return ResponseEntity.status(500).body(Map.of("error", "Failed to save: " + e.getMessage()));
         }
     }
 }

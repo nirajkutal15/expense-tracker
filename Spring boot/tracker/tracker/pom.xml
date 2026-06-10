@@ -96,6 +96,13 @@
             <scope>test</scope>
         </dependency>
 
+        <!-- Dotenv — loads .env file for GEMINI_API_KEY -->
+        <dependency>
+            <groupId>me.paulschwarz</groupId>
+            <artifactId>spring-dotenv</artifactId>
+            <version>4.0.0</version>
+        </dependency>
+
     </dependencies>
 
     <build>
